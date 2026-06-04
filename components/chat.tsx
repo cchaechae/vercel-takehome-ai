@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState } from 'react';
+import { Streamdown } from 'streamdown';
 
 const SAMPLES = [
   { text: 'How do I use the `use cache` directive with cacheLife in Next.js?', tag: 'Next.js' },
@@ -191,9 +192,9 @@ export default function Chat() {
             {m.parts.map((part, i) => {
               if (part.type === 'text') {
                 return (
-                  <div key={i} className="whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-100">
+                  <Streamdown key={i} className="text-[15px] leading-relaxed text-neutral-100">
                     {part.text}
-                  </div>
+                  </Streamdown>
                 );
               }
               if (part.type.startsWith('tool-')) {
