@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "ingest": "node --env-file=.env.local --import tsx scripts/ingest.ts",
-    "eval": "node --env-file=.env.local --import tsx eval/run.ts"
+    "eval": "node --env-file=.env.local --import tsx eval/run.ts",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.198",
@@ -28,6 +29,7 @@
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.6"
   }
 }
