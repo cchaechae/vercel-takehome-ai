@@ -5,9 +5,9 @@ import { DefaultChatTransport } from 'ai';
 import { useState } from 'react';
 
 const SAMPLES = [
-  'How do I use the `use cache` directive with cacheLife in Next.js?',
-  'How do I stream a chat response with the AI SDK useChat hook?',
-  'What is Fluid Compute and how does it reduce cold starts?',
+  { text: 'How do I use the `use cache` directive with cacheLife in Next.js?', tag: 'Next.js' },
+  { text: 'How do I stream a chat response with the AI SDK useChat hook?', tag: 'AI SDK' },
+  { text: 'What is Fluid Compute and how does it reduce cold starts?', tag: 'Compute' },
 ];
 
 const PRODUCT_STYLE: Record<string, string> = {
@@ -24,6 +24,33 @@ type ToolResult = {
   url?: string;
 };
 
+function Logo({ size }: { size: 'lg' | 'sm' }) {
+  const box = size === 'lg' ? 'h-11 w-11 rounded-xl' : 'h-7 w-7 rounded-lg';
+  return (
+    <div className={`grid shrink-0 place-items-center bg-white text-black ${box}`}>
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-1/2 w-1/2">
+        <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" />
+      </svg>
+    </div>
+  );
+}
+
+function Icon({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
 function ToolCall({ part }: { part: { type: string; state?: string; input?: unknown; output?: unknown } }) {
   const name = part.type.replace('tool-', '');
   const input = part.input as { query?: string; path?: string } | undefined;
@@ -31,7 +58,7 @@ function ToolCall({ part }: { part: { type: string; state?: string; input?: unkn
   const running = part.state !== 'output-available';
 
   return (
-    <div className="my-2 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs">
+    <div className="my-2 rounded-xl border border-neutral-800 bg-neutral-900/50 px-3 py-2 text-xs">
       <div className="flex items-center gap-2 text-neutral-400">
         <span>{name === 'searchDocs' ? '🔎' : '📄'}</span>
         <span className="font-mono">{name}</span>
@@ -72,6 +99,7 @@ export default function Chat() {
   });
   const [input, setInput] = useState('');
   const busy = status === 'submitted' || status === 'streaming';
+  const started = messages.length > 0;
 
   function submit(text: string) {
     const t = text.trim();
@@ -80,31 +108,81 @@ export default function Chat() {
     setInput('');
   }
 
-  return (
-    <div className="mx-auto flex h-dvh max-w-2xl flex-col px-4">
-      <header className="py-5">
-        <h1 className="text-lg font-semibold">Vercel Docs Assistant</h1>
-        <p className="text-sm text-neutral-500">
-          Grounded RAG over Vercel · Next.js · AI SDK docs. Cites sources, abstains when unsure.
-        </p>
-      </header>
+  const composer = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(input);
+      }}
+      className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2"
+    >
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Ask a question…"
+        className="flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-neutral-500"
+      />
+      <button
+        type="submit"
+        disabled={busy}
+        aria-label="Send"
+        className="grid h-8 w-8 place-items-center rounded-lg bg-white text-black disabled:opacity-40"
+      >
+        <Icon d="M12 19V5M5 12l7-7 7 7" />
+      </button>
+    </form>
+  );
 
-      <div className="flex-1 space-y-5 overflow-y-auto pb-4">
-        {messages.length === 0 && (
+  // Landing state: centered hero. Collapses to the compact header below once a
+  // message is sent (messages.length > 0).
+  if (!started) {
+    return (
+      <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-y-auto px-4">
+        <div className="m-auto w-full py-8">
+          <div className="flex flex-col items-center text-center">
+            <Logo size="lg" />
+            <h1 className="mt-4 text-2xl font-semibold">Vercel Docs Assistant</h1>
+            <p className="mt-2 max-w-md text-sm text-neutral-400">
+              Ask anything about Vercel, Next.js, and the AI SDK. Every answer is grounded in the official docs.
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs text-neutral-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              Grounded · cites sources
+            </span>
+          </div>
+
+          <div className="mt-6">{composer}</div>
+
+          <p className="mb-2 mt-6 text-xs font-medium uppercase tracking-wide text-neutral-500">Try asking</p>
           <div className="space-y-2">
-            <p className="text-sm text-neutral-500">Try asking:</p>
             {SAMPLES.map((s) => (
               <button
-                key={s}
-                onClick={() => submit(s)}
-                className="block w-full rounded-lg border border-neutral-800 px-3 py-2 text-left text-sm text-neutral-300 hover:bg-neutral-900"
+                key={s.text}
+                onClick={() => submit(s.text)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-3 text-left hover:bg-neutral-900"
               >
-                {s}
+                <span className="text-sm text-neutral-200">{s.text}</span>
+                <span className="flex shrink-0 items-center gap-2 text-neutral-500">
+                  <span className="rounded border border-neutral-700 px-1.5 py-0.5 font-mono text-[10px]">{s.tag}</span>
+                  <Icon d="M9 6l6 6-6 6" />
+                </span>
               </button>
             ))}
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
 
+  // Chat state: compact header on top, messages scroll, composer pinned bottom.
+  return (
+    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col px-4">
+      <header className="flex items-center gap-2 py-4">
+        <Logo size="sm" />
+        <span className="text-sm font-semibold">Vercel Docs Assistant</span>
+      </header>
+
+      <div className="flex-1 space-y-5 overflow-y-auto pb-4">
         {messages.map((m) => (
           <div key={m.id}>
             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -130,27 +208,7 @@ export default function Chat() {
         {error && <div className="text-sm text-red-500">Something went wrong. Please try again.</div>}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit(input);
-        }}
-        className="flex gap-2 border-t border-neutral-800 py-4"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about Vercel, Next.js, or the AI SDK…"
-          className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm outline-none focus:border-neutral-600"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-40"
-        >
-          Send
-        </button>
-      </form>
+      <div className="border-t border-neutral-800 py-4">{composer}</div>
     </div>
   );
 }
