@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { cosineSimilarity } from 'ai';
 import { embedQuery } from './embeddings';
+import { z } from 'zod';
 
 export type Product = 'vercel' | 'nextjs' | 'ai-sdk';
 
@@ -32,6 +33,35 @@ export interface DocsIndex {
   pages: Record<string, Page>;
 }
 
+const ProductSchema = z.enum(['vercel', 'nextjs', 'ai-sdk']);
+
+const ChunkMetaSchema = z.object({
+  id: z.string(),
+  product: ProductSchema,
+  path: z.string(),
+  url: z.string(),
+  title: z.string(),
+  text: z.string(),
+});
+
+const PageSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+  product: ProductSchema,
+  text: z.string(),
+});
+
+const DocsIndexSchema = z.object({
+  dim: z.number().int().positive(),
+  chunks: z.array(ChunkMetaSchema),
+  pages: z.record(z.string(), PageSchema),
+});
+
+/** Validate the index JSON at the trust boundary so a corrupt or stale index fails loudly. */
+export function parseIndex(raw: unknown): DocsIndex {
+  return DocsIndexSchema.parse(raw);
+}
+
 interface LoadedIndex {
   chunks: Chunk[];
   pages: Record<string, Page>;
@@ -45,10 +75,15 @@ let cache: LoadedIndex | null = null;
 function load(): LoadedIndex {
   if (cache) return cache;
   const dir = path.join(process.cwd(), 'data');
-  const meta = JSON.parse(fs.readFileSync(path.join(dir, 'docs-index.json'), 'utf8')) as DocsIndex;
+  const meta = parseIndex(JSON.parse(fs.readFileSync(path.join(dir, 'docs-index.json'), 'utf8')));
   const buf = fs.readFileSync(path.join(dir, 'embeddings.bin'));
   const floats = new Float32Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
   const { dim } = meta;
+  if (floats.length !== meta.chunks.length * dim) {
+    throw new Error(
+      `embeddings.bin (${floats.length} floats) does not match docs-index.json (${meta.chunks.length} chunks x ${dim} dim). Re-run \`npm run ingest\`.`,
+    );
+  }
   const chunks: Chunk[] = meta.chunks.map((c, i) => ({
     ...c,
     embedding: Array.from(floats.subarray(i * dim, (i + 1) * dim)),
