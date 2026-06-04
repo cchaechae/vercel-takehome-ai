@@ -1,7 +1,8 @@
 import { generateText, stepCountIs, tool } from 'ai';
 import { z } from 'zod';
 import { fetchDocByPath, searchDocs } from './store';
-import { RELEVANCE_THRESHOLD, SYNTHESIS_MODELS } from './models';
+import { RELEVANCE_THRESHOLD } from './models';
+import { withFailover } from './failover';
 
 export const MAX_STEPS = 6;
 
@@ -74,21 +75,15 @@ Rules:
 
 /** Non-streaming answer (used by the eval harness). Mirrors the route's agent. */
 export async function generateAnswer(question: string): Promise<{ text: string; model: string }> {
-  let lastError: unknown;
-  for (const model of SYNTHESIS_MODELS) {
-    try {
-      const { text } = await generateText({
-        model,
-        system: SYSTEM,
-        prompt: question,
-        tools,
-        stopWhen: stepCountIs(MAX_STEPS),
-        prepareStep,
-      });
-      return { text, model };
-    } catch (err) {
-      lastError = err;
-    }
-  }
-  throw lastError ?? new Error('All models failed');
+  return withFailover(async (model) => {
+    const { text } = await generateText({
+      model,
+      system: SYSTEM,
+      prompt: question,
+      tools,
+      stopWhen: stepCountIs(MAX_STEPS),
+      prepareStep,
+    });
+    return { text, model };
+  });
 }
