@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { embedBatch } from '../lib/embeddings';
+import { chunkText, parseLinks, titleFromMarkdown } from '../lib/ingest-core';
 import type { Chunk, DocsIndex, Page, Product } from '../lib/store';
 
 interface Source {
@@ -41,8 +42,6 @@ const SOURCES: Source[] = [
 ];
 
 const MAX_PAGES_PER_PRODUCT = 35;
-const CHUNK_CHARS = 1400;
-const CHUNK_OVERLAP = 180;
 const EMBED_BATCH = 64;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,66 +63,23 @@ async function getMarkdown(docUrl: string): Promise<string> {
   return md;
 }
 
-/** Extract doc links (absolute or relative) on the source host under /docs. */
-function parseLinks(markdown: string, src: Source): string[] {
-  const out = new Set<string>();
-  for (const m of markdown.matchAll(/\]\((https?:\/\/[^)]+|\/docs\/[^)]+)\)/g)) {
-    let raw = m[1];
-    if (raw.startsWith('/')) raw = `https://${src.docHost}${raw}`;
-    const url = raw.replace(/\.md$/, '').replace(/#.*$/, '').replace(/\/$/, '');
-    let u: URL;
-    try {
-      u = new URL(url);
-    } catch {
-      continue;
-    }
-    if (u.host !== src.docHost) continue;
-    if (!u.pathname.startsWith('/docs')) continue;
-    if (u.pathname === '/docs' || u.pathname.endsWith('/llms.txt')) continue;
-    out.add(url);
-  }
-  return [...out];
-}
-
 /** Collect doc URLs from llms.txt; if the index is thin, crawl one level deeper. */
 async function collectUrls(src: Source): Promise<string[]> {
   const indexMd = await getText(src.indexUrl);
   // Curated seeds first so they survive the cap; then llms.txt-derived links.
-  const seen = new Set([...(src.seeds ?? []), ...parseLinks(indexMd, src)]);
+  const seen = new Set([...(src.seeds ?? []), ...parseLinks(indexMd, src.docHost)]);
 
   if (seen.size < MAX_PAGES_PER_PRODUCT) {
     for (const seed of [...seen]) {
       if (seen.size >= MAX_PAGES_PER_PRODUCT) break;
       try {
-        for (const link of parseLinks(await getMarkdown(seed), src)) seen.add(link);
+        for (const link of parseLinks(await getMarkdown(seed), src.docHost)) seen.add(link);
       } catch {
         /* skip unreachable seed */
       }
     }
   }
   return [...seen].slice(0, MAX_PAGES_PER_PRODUCT);
-}
-
-function titleFromMarkdown(md: string, fallback: string): string {
-  const h1 = md.match(/^#\s+(.+)$/m);
-  return (h1?.[1] ?? fallback).trim();
-}
-
-/** Paragraph-aware chunking with a small overlap to preserve context across cuts. */
-function chunkText(text: string): string[] {
-  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
-  const chunks: string[] = [];
-  let cur = '';
-  for (const block of blocks) {
-    if (cur && cur.length + block.length + 2 > CHUNK_CHARS) {
-      chunks.push(cur);
-      cur = cur.slice(-CHUNK_OVERLAP) + '\n\n' + block;
-    } else {
-      cur = cur ? cur + '\n\n' + block : block;
-    }
-  }
-  if (cur.trim()) chunks.push(cur);
-  return chunks;
 }
 
 async function ingestSource(src: Source): Promise<{ pages: Page[]; pending: Omit<Chunk, 'embedding'>[] }> {
