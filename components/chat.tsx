@@ -41,8 +41,8 @@ function ToolCall({ part }: { part: { type: string; state?: string; input?: unkn
       </div>
       {output?.results && output.results.length > 0 && (
         <ul className="mt-1.5 space-y-1">
-          {output.results.slice(0, 5).map((r) => (
-            <li key={r.url} className="flex items-center gap-2">
+          {output.results.slice(0, 5).map((r, i) => (
+            <li key={`${r.url}-${i}`} className="flex items-center gap-2">
               <span className={`rounded px-1 text-[10px] ${PRODUCT_STYLE[r.product] ?? 'bg-neutral-700'}`}>
                 {r.product}
               </span>
