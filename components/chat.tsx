@@ -138,7 +138,7 @@ export default function Chat() {
   // message is sent (messages.length > 0).
   if (!started) {
     return (
-      <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col overflow-y-auto px-4">
+      <div className="mx-auto flex h-dvh w-full max-w-[46rem] flex-col overflow-y-auto px-4">
         <div className="m-auto w-full py-8">
           <div className="flex flex-col items-center text-center">
             <Logo size="lg" />
@@ -177,7 +177,7 @@ export default function Chat() {
 
   // Chat state: compact header on top, messages scroll, composer pinned bottom.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col px-4">
+    <div className="mx-auto flex h-dvh w-full max-w-[46rem] flex-col px-4">
       <header className="flex items-center gap-2 py-4">
         <Logo size="sm" />
         <span className="text-sm font-semibold">Vercel Docs Assistant</span>
