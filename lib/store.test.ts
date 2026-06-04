@@ -31,7 +31,7 @@ describe('parseIndex', () => {
   });
 
   it('rejects an index missing dim', () => {
-    const { dim, ...noDim } = validIndex;
+    const noDim = { chunks: validIndex.chunks, pages: validIndex.pages };
     expect(() => parseIndex(noDim)).toThrow();
   });
 
