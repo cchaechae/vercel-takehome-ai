@@ -2,49 +2,49 @@
   {
     "question": "What is Fluid Compute on Vercel?",
     "answerable": true,
-    "expectedUrlSubstring": "compute",
+    "expectedTopicHint": "compute",
     "keywords": ["fluid"]
   },
   {
     "question": "How does caching work on Vercel's Edge Network?",
     "answerable": true,
-    "expectedUrlSubstring": "cach",
+    "expectedTopicHint": "cach",
     "keywords": ["cache"]
   },
   {
     "question": "What is the Vercel AI Gateway and what does it provide?",
     "answerable": true,
-    "expectedUrlSubstring": "gateway",
+    "expectedTopicHint": "gateway",
     "keywords": ["gateway"]
   },
   {
     "question": "How do I create a shared layout in the Next.js App Router?",
     "answerable": true,
-    "expectedUrlSubstring": "layout",
+    "expectedTopicHint": "layout",
     "keywords": ["layout"]
   },
   {
     "question": "How do I fetch data inside a Next.js Server Component?",
     "answerable": true,
-    "expectedUrlSubstring": "fetch",
+    "expectedTopicHint": "fetch",
     "keywords": ["fetch"]
   },
   {
     "question": "How do I stream a text response with the AI SDK?",
     "answerable": true,
-    "expectedUrlSubstring": "stream",
+    "expectedTopicHint": "stream",
     "keywords": ["stream"]
   },
   {
     "question": "How do I define a tool for tool calling with the AI SDK?",
     "answerable": true,
-    "expectedUrlSubstring": "tool",
+    "expectedTopicHint": "tool",
     "keywords": ["tool", "inputschema"]
   },
   {
     "question": "How do I generate a structured object with the AI SDK?",
     "answerable": true,
-    "expectedUrlSubstring": "object",
+    "expectedTopicHint": "object",
     "keywords": ["object"]
   },
   {

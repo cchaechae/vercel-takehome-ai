@@ -20,14 +20,14 @@ interface Item {
   question: string;
   answerable: boolean;
   keywords?: string[];
-  expectedUrlSubstring?: string;
+  expectedTopicHint?: string;
 }
 
 // A grounded, on-topic answer cites one of the three documentation sources.
 // An abstention points elsewhere (or nowhere) — it does not cite our docs.
 const DOC_CITATION = /(vercel\.com\/docs|nextjs\.org\/docs|ai-sdk\.dev\/docs)/i;
 
-const THRESHOLDS = { retrieval: 0.75, grounding: 0.75, citation: 0.75, abstention: 1.0 };
+const THRESHOLDS = { retrieval: 0.75, grounding: 0.75, topicCoverage: 0.75, abstention: 1.0 };
 
 function hasKeywords(text: string, kws: string[] = []): boolean {
   const lower = text.toLowerCase();
@@ -44,7 +44,7 @@ async function main() {
 
   let retrievalHits = 0;
   let groundingHits = 0;
-  let citationHits = 0;
+  let topicHits = 0;
   let abstentions = 0;
 
   console.log(`Running ${items.length} eval cases (${answerable.length} answerable, ${unanswerable.length} unanswerable)\n`);
@@ -58,16 +58,16 @@ async function main() {
     if (item.answerable) {
       const retrieved = (top?.score ?? 0) >= RELEVANCE_THRESHOLD;
       const grounded = hasKeywords(text, item.keywords) && citesDocs;
-      const citedRightPage =
-        !item.expectedUrlSubstring ||
-        text.toLowerCase().includes(item.expectedUrlSubstring.toLowerCase());
+      const coversTopic =
+        !item.expectedTopicHint ||
+        text.toLowerCase().includes(item.expectedTopicHint.toLowerCase());
       if (retrieved) retrievalHits++;
       if (grounded) groundingHits++;
-      if (citedRightPage) citationHits++;
+      if (coversTopic) topicHits++;
       console.log(
-        `${retrieved && grounded && citedRightPage ? '✅' : '❌'} [answerable] ${item.question}\n` +
+        `${retrieved && grounded && coversTopic ? '✅' : '❌'} [answerable] ${item.question}\n` +
           `   retrieval=${retrieved ? 'ok' : 'MISS'} (top=${top?.score.toFixed(2)}, ${top?.url ?? '-'}) | ` +
-          `grounded=${grounded ? 'ok' : 'MISS'} | citation=${citedRightPage ? 'ok' : 'MISS'} (want "${item.expectedUrlSubstring ?? '-'}")`,
+          `grounded=${grounded ? 'ok' : 'MISS'} | topic=${coversTopic ? 'ok' : 'MISS'} (want "${item.expectedTopicHint ?? '-'}")`,
       );
     } else {
       const abstained = !citesDocs;
@@ -81,19 +81,19 @@ async function main() {
 
   const retrievalRate = retrievalHits / answerable.length;
   const groundingRate = groundingHits / answerable.length;
-  const citationRate = citationHits / answerable.length;
+  const topicCoverageRate = topicHits / answerable.length;
   const abstentionRate = abstentions / unanswerable.length;
 
   console.log('\n──────── Scorecard ────────');
   console.log(`Retrieval hit rate : ${(retrievalRate * 100).toFixed(0)}%  (threshold ${THRESHOLDS.retrieval * 100}%)`);
   console.log(`Grounding rate     : ${(groundingRate * 100).toFixed(0)}%  (threshold ${THRESHOLDS.grounding * 100}%)`);
-  console.log(`Citation accuracy  : ${(citationRate * 100).toFixed(0)}%  (threshold ${THRESHOLDS.citation * 100}%)`);
+  console.log(`Topic coverage     : ${(topicCoverageRate * 100).toFixed(0)}%  (threshold ${THRESHOLDS.topicCoverage * 100}%)`);
   console.log(`Abstention rate    : ${(abstentionRate * 100).toFixed(0)}%  (threshold ${THRESHOLDS.abstention * 100}%)`);
 
   const pass =
     retrievalRate >= THRESHOLDS.retrieval &&
     groundingRate >= THRESHOLDS.grounding &&
-    citationRate >= THRESHOLDS.citation &&
+    topicCoverageRate >= THRESHOLDS.topicCoverage &&
     abstentionRate >= THRESHOLDS.abstention;
 
   console.log(`\n${pass ? '✅ PASS' : '❌ FAIL'}`);
