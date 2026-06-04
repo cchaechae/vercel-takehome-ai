@@ -1,7 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withFailover } from './failover';
 
 describe('withFailover', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns the first success and stops', async () => {
     const run = vi.fn(async (model: string) => model);
     const result = await withFailover(run, { models: ['a', 'b'] });

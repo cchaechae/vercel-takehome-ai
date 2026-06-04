@@ -25,8 +25,8 @@ export async function withFailover<T>(
       return await fn(model);
     } catch (err) {
       lastError = err;
-      console.warn(`[failover] model ${model} failed:`, err instanceof Error ? err.message : err);
       if (!isRetryable(err)) throw err;
+      console.warn(`[failover] model ${model} failed:`, err instanceof Error ? err.message : err);
     }
   }
   throw lastError ?? new Error('All models failed');
