@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { embedBatch } from '../lib/embeddings';
-import { chunkText, parseLinks, titleFromMarkdown } from '../lib/ingest-core';
+import { chunkMarkdown, cleanMdx, parseLinks, stripFrontmatter, titleFromMarkdown } from '../lib/ingest-core';
 import type { Chunk, DocsIndex, Page, Product } from '../lib/store';
 
 interface Source {
@@ -94,11 +94,13 @@ async function ingestSource(src: Source): Promise<{ pages: Page[]; pending: Omit
     const pathname = new URL(url).pathname;
     const pathKey = `${src.product}:${pathname}`;
     try {
-      const md = await getMarkdown(url);
-      const title = titleFromMarkdown(md, pathname.split('/').pop() ?? pathname);
-      pages.push({ title, url, product: src.product, text: md });
-      chunkText(md).forEach((text, i) => {
-        pending.push({ id: `${pathKey}#${i}`, product: src.product, path: pathKey, url, title, text });
+      const raw = await getMarkdown(url);
+      const { meta, body } = stripFrontmatter(raw);
+      const clean = cleanMdx(body);
+      const title = meta.title ?? titleFromMarkdown(clean, pathname.split('/').pop() ?? pathname);
+      pages.push({ title, url, product: src.product, text: clean });
+      chunkMarkdown(clean, { product: src.product, title, summary: meta.summary }).forEach((c, i) => {
+        pending.push({ id: `${pathKey}#${i}`, product: src.product, path: pathKey, url, title, text: c.text });
       });
     } catch (err) {
       console.warn(`[${src.product}] skip ${url}: ${(err as Error).message}`);
