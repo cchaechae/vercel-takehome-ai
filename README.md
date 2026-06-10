@@ -32,16 +32,22 @@ ingest (offline, once)          data/docs-index.json          request time
                                                               useChat UI (citations + tool trace)
 ```
 
-- **Ingest** (`scripts/ingest.ts`): parse each product's `llms.txt` link index,
-  fetch every page as markdown (the `.md` endpoint), chunk (~1.4k chars, small
-  overlap), embed with `text-embedding-3-small`, and write one JSON file. No
-  scraping or DB at runtime.
+- **Ingest** (`scripts/ingest.ts` + `lib/ingest-core.ts`): parse each product's
+  `llms.txt` link index, fetch every page as markdown (the `.md` endpoint),
+  chunk by document structure, embed with `text-embedding-3-small`, and write
+  one JSON file. No scraping or DB at runtime.
 - **Store** (`lib/store.ts`): loads the JSON once into memory; `searchDocs` does
   a cosine-similarity scan, `fetchDocByPath` is a keyed full-page lookup.
 - **Agent** (`lib/agent.ts` + `app/api/chat/route.ts`): an AI SDK tool-calling
   loop bounded by `stepCountIs(6)`.
-- **UI** (`components/chat.tsx`): `useChat` streaming; renders the answer, the
-  tool calls, and clickable source links.
+- **UI** (`components/chat.tsx` + `components/sidebar.tsx`): `useChat`
+  streaming with markdown rendering (Streamdown); shows the answer, the tool
+  calls, and clickable source links. Each conversation lives at `/chat/[id]`;
+  a sidebar lists, switches, creates, and deletes chats.
+- **Chat history** (`lib/chat-store.ts`): conversations persist to
+  `localStorage`, saved when a turn settles. The store is the single
+  persistence seam — swap its four methods for a server-backed implementation
+  and the UI doesn't change.
 
 ## The two tools
 
@@ -62,9 +68,11 @@ npm run eval          # run the regression scorecard
 
 ## Notes & tradeoffs
 
-- **Chunking**: paragraph-aware ~1.4k-char chunks with overlap so code blocks
-  and steps survive cuts; `fetchDoc` recovers the full page when a chunk isn't
-  enough.
+- **Chunking**: structure-aware — split on markdown headings, prefix each
+  chunk with a breadcrumb (`Vercel › Page › Section`) so chunks are
+  self-contained, and pack paragraphs up to ~2k chars without ever splitting a
+  fenced code block. The page summary becomes a synthetic lead chunk.
+  `fetchDoc` recovers the full page when a chunk isn't enough.
 - **Abstention**: if top similarity is below `RELEVANCE_THRESHOLD`
   (`lib/models.ts`), `searchDocs` reports no match and the system prompt
   instructs a refusal instead of a guess.
