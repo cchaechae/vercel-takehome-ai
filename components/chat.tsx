@@ -2,8 +2,9 @@
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Streamdown } from 'streamdown';
+import { chatStore } from '@/lib/chat-store';
 
 const SAMPLES = [
   { text: 'How do I use the `use cache` directive with cacheLife in Next.js?', tag: 'Next.js' },
@@ -94,13 +95,26 @@ function ToolCall({ part }: { part: { type: string; state?: string; input?: unkn
   );
 }
 
-export default function Chat() {
-  const { messages, sendMessage, status, error } = useChat({
+export default function Chat({ chatId }: { chatId: string }) {
+  const { messages, setMessages, sendMessage, status, error } = useChat({
+    id: chatId,
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
   const [input, setInput] = useState('');
   const busy = status === 'submitted' || status === 'streaming';
   const started = messages.length > 0;
+
+  // Hydrate from the store after mount (client-only → no hydration mismatch),
+  // and re-load when navigating to a different chat.
+  useEffect(() => {
+    setMessages(chatStore.load(chatId));
+  }, [chatId, setMessages]);
+
+  // Persist once a turn settles. Skipped while streaming; if the tab closes
+  // mid-stream that answer is lost (the client is the only writer here).
+  useEffect(() => {
+    if (!busy && messages.length) chatStore.save(chatId, messages);
+  }, [busy, messages, chatId]);
 
   function submit(text: string) {
     const t = text.trim();

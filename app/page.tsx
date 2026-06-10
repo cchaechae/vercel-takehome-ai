@@ -1,5 +1,12 @@
-import Chat from '@/components/chat';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  return <Chat />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace(`/chat/${crypto.randomUUID()}`);
+  }, [router]);
+  return null;
 }
